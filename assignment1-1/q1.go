@@ -20,10 +20,11 @@ import (
 // are removed, e.g. "don't" becomes "dont".
 // You should use `checkError` to handle potential errors.
 func topWords(path string, numWords int, charThreshold int) []WordCount {
-	// TODO: implement me
 	// HINT: You may find the `strings.Fields` and `strings.ToLower` functions helpful
 	// HINT: To keep only alphanumeric characters, use the regex "[^0-9a-zA-Z]+"
+
 	var result []WordCount
+	// We'll use this cache to quickly access previous encounters of a word
 	var cache = make(map[string]int)
 
 	file, err := os.Open(path)
@@ -31,12 +32,22 @@ func topWords(path string, numWords int, charThreshold int) []WordCount {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
 
+	// We defer the closing of the file to the end of the execution of topWords in order to prevent a resource leak
+	defer func() {
+		err = file.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// We can take advantage of the ScanWords scanner to retrieve tokens separated by spaces
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanWords)
 
-	for nextTokenInFile := scanner.Scan(); nextTokenInFile != false; nextTokenInFile = scanner.Scan() {
+	// This for will retrieve tokens until it fails or returns false, signaling the EOF
+	for nextTokenInFile := scanner.Scan(); nextTokenInFile; nextTokenInFile = scanner.Scan() {
+		// Get the word and remove any non-alphanumeric characters, transform it to lower case
 		word := regexp.MustCompile("[^0-9a-zA-Z]+").ReplaceAllString(scanner.Text(), "")
 		word = strings.ToLower(word)
 
@@ -46,13 +57,13 @@ func topWords(path string, numWords int, charThreshold int) []WordCount {
 		cache[word] = cache[word] + 1
 	}
 
-	// Pack the cache map into WordCount structs
+	// Transform the cache map into WordCount structs
 	for word, count := range cache {
 		result = append(result, WordCount{word, count})
 	}
 
 	sortWordCounts(result)
-
+	// Create a slice with only the requested number of words
 	return result[:numWords]
 }
 
