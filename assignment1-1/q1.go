@@ -46,7 +46,7 @@ func topWords(path string, numWords int, charThreshold int) []WordCount {
 	scanner.Split(bufio.ScanWords)
 
 	// This for will retrieve tokens until it fails or returns false, signaling the EOF
-	for nextTokenInFile := scanner.Scan(); nextTokenInFile; nextTokenInFile = scanner.Scan() {
+	for scanner.Scan() {
 		// Get the word and remove any non-alphanumeric characters, transform it to lower case
 		word := regexp.MustCompile("[^0-9a-zA-Z]+").ReplaceAllString(scanner.Text(), "")
 		word = strings.ToLower(word)
