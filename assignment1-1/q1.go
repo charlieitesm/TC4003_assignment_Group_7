@@ -3,7 +3,6 @@ package cos418_hw1_1
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"sort"
@@ -29,16 +28,12 @@ func topWords(path string, numWords int, charThreshold int) []WordCount {
 
 	file, err := os.Open(path)
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkError(err)
 
 	// We defer the closing of the file to the end of the execution of topWords in order to prevent a resource leak
 	defer func() {
 		err = file.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
+		checkError(err)
 	}()
 
 	// We can take advantage of the ScanWords scanner to retrieve tokens separated by spaces

@@ -29,17 +29,13 @@ func sum(num int, fileName string) int {
 	// HINT: use `readInts` and `sumWorkers`
 	// HINT: used buffered channels for splitting numbers between workers
 	file, err := os.Open(fileName)
-	defer func() {
-		err = file.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	// Check for errors opening the file
+	checkError(err)
 	numbers, err := readInts(file)
+	err = file.Close()
+	// Check for errors while closing the file
+	checkError(err)
 
 	// We'll set the buffer of the input channel to 1 in order to better split work across the available workers
 	inputWorkerChan := make(chan int, 1)
