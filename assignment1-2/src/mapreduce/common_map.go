@@ -1,7 +1,11 @@
 package mapreduce
 
 import (
+	"encoding/json"
 	"hash/fnv"
+	"io/ioutil"
+	"os"
+	"strings"
 )
 
 // doMap does the job of a map worker: it reads one of the input files
@@ -41,6 +45,45 @@ func doMap(
 	//
 	// Remember to close the file after you have written all the values!
 	// Use checkError to handle errors.
+
+	content, err := ioutil.ReadFile(inFile)
+	checkError(err)
+
+	words := strings.Fields(string(content))
+
+	// Divide the work into chunks
+	wordsInChunk := len(words) / nReduce
+	startIdx := 0
+	for chunk := 1; chunk <= nReduce; chunk++ {
+		// If we are on the last chunk, just add the rest of the elements on the word array
+		var chunkContents []string
+
+		if chunk == nReduce {
+			chunkContents = words[startIdx:]
+		} else {
+			chunkContents = words[startIdx:wordsInChunk]
+		}
+		// The chunk for the name should be 0-based
+		outputFileName := reduceName(jobName, mapTaskNumber, chunk-1)
+		intermediateOutput := mapF(outputFileName, strings.Join(chunkContents, " "))
+
+		writeIntermediateOutputFile(outputFileName, intermediateOutput)
+		startIdx = startIdx + wordsInChunk
+	}
+
+}
+
+func writeIntermediateOutputFile(filename string, output interface{}) {
+	outputFile, err := os.Create(filename)
+	checkError(err)
+	defer func() {
+		err := outputFile.Close()
+		checkError(err)
+	}()
+
+	enc := json.NewEncoder(outputFile)
+	err = enc.Encode(&output)
+	checkError(err)
 }
 
 func ihash(s string) uint32 {
