@@ -1,5 +1,7 @@
 package mapreduce
 
+import "sort"
+
 // doReduce does the job of a reduce worker: it reads the intermediate
 // key/value pairs (produced by the map phase) for this task, sorts the
 // intermediate key/value pairs by key, calls the user-defined reduce function
@@ -33,4 +35,23 @@ func doReduce(
 	// file.Close()
 	//
 	// Use checkError to handle errors.
+	inputFileName := reduceName(jobName, reduceTaskNumber, reduceTaskNumber)
+	outputMergeFileName := mergeName(jobName, reduceTaskNumber)
+	intermediateOutput := readIntermediateOutputFile(inputFileName)
+
+	for _, val := range intermediateOutput {
+		sort.Slice(val, func(i, j int) bool {
+			return val[i].Key < val[j].Key
+		})
+
+		var mergedKV []KeyValue
+
+		for _, kv := range val {
+			key := kv.Key
+			mergedKV = append(mergedKV, KeyValue{Key: key, Value: reduceF(key, []string{kv.Value})})
+		}
+
+		writeMergedFile(outputMergeFileName, mergedKV)
+	}
+
 }

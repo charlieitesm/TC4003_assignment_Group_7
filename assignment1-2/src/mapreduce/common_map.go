@@ -1,10 +1,8 @@
 package mapreduce
 
 import (
-	"encoding/json"
 	"hash/fnv"
 	"io/ioutil"
-	"os"
 	"strings"
 )
 
@@ -65,25 +63,14 @@ func doMap(
 		}
 		// The chunk for the name should be 0-based
 		outputFileName := reduceName(jobName, mapTaskNumber, chunk-1)
-		intermediateOutput := mapF(outputFileName, strings.Join(chunkContents, " "))
+		intermediateKv := mapF(outputFileName, strings.Join(chunkContents, " "))
+		intermediateOutput := make(map[uint32][]KeyValue)
+		intermediateOutput[ihash(inFile)] = intermediateKv
 
 		writeIntermediateOutputFile(outputFileName, intermediateOutput)
 		startIdx = startIdx + wordsInChunk
 	}
 
-}
-
-func writeIntermediateOutputFile(filename string, output interface{}) {
-	outputFile, err := os.Create(filename)
-	checkError(err)
-	defer func() {
-		err := outputFile.Close()
-		checkError(err)
-	}()
-
-	enc := json.NewEncoder(outputFile)
-	err = enc.Encode(&output)
-	checkError(err)
 }
 
 func ihash(s string) uint32 {
