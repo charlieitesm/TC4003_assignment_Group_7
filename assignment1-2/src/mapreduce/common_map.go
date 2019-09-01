@@ -16,7 +16,6 @@ func doMap(
 	nReduce int, // the number of reduce task that will be run ("R" in the paper)
 	mapF func(file string, contents string) []KeyValue,
 ) {
-	// TODO:
 	// You will need to write this function.
 	// You can find the filename for this map task's input to reduce task number
 	// r using reduceName(jobName, mapTaskNumber, r). The ihash function (given
@@ -52,20 +51,21 @@ func doMap(
 	// Divide the work into chunks
 	wordsInChunk := len(words) / nReduce
 	startIdx := 0
-	for chunk := 1; chunk <= nReduce; chunk++ {
+	for reduceChunk := 0; reduceChunk < nReduce; reduceChunk++ {
 		// If we are on the last chunk, just add the rest of the elements on the word array
 		var chunkContents []string
 
-		if chunk == nReduce {
+		if reduceChunk == nReduce-1 {
 			chunkContents = words[startIdx:]
 		} else {
-			chunkContents = words[startIdx:wordsInChunk]
+			chunkContents = words[startIdx : startIdx+wordsInChunk]
 		}
-		// The chunk for the name should be 0-based
-		outputFileName := reduceName(jobName, mapTaskNumber, chunk-1)
+		// The reduceChunk for the name should be 0-based
+		outputFileName := reduceName(jobName, mapTaskNumber, reduceChunk)
+
 		intermediateKv := mapF(outputFileName, strings.Join(chunkContents, " "))
 		intermediateOutput := make(map[uint32][]KeyValue)
-		intermediateOutput[ihash(inFile)] = intermediateKv
+		intermediateOutput[ihash(outputFileName)] = intermediateKv
 
 		writeIntermediateOutputFile(outputFileName, intermediateOutput)
 		startIdx = startIdx + wordsInChunk
@@ -75,6 +75,7 @@ func doMap(
 
 func ihash(s string) uint32 {
 	h := fnv.New32a()
-	h.Write([]byte(s))
+	_, err := h.Write([]byte(s))
+	checkError(err)
 	return h.Sum32()
 }

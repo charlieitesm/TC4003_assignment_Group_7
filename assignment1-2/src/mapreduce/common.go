@@ -65,7 +65,7 @@ func writeIntermediateOutputFile(filename string, output interface{}) {
 	checkError(err)
 }
 
-func readIntermediateOutputFile(filename string) map[string][]KeyValue {
+func readIntermediateOutputFile(filename string) map[uint32][]KeyValue {
 	inputFile, err := os.Open(filename)
 	checkError(err)
 	defer func() {
@@ -73,7 +73,7 @@ func readIntermediateOutputFile(filename string) map[string][]KeyValue {
 		checkError(err)
 	}()
 
-	var result map[string][]KeyValue
+	var result map[uint32][]KeyValue
 
 	dec := json.NewDecoder(inputFile)
 

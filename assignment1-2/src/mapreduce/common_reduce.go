@@ -12,7 +12,6 @@ func doReduce(
 	nMap int, // the number of map tasks that were run ("M" in the paper)
 	reduceF func(key string, values []string) string,
 ) {
-	// TODO:
 	// You will need to write this function.
 	// You can find the intermediate file for this reduce task from map task number
 	// m using reduceName(jobName, m, reduceTaskNumber).
@@ -35,23 +34,24 @@ func doReduce(
 	// file.Close()
 	//
 	// Use checkError to handle errors.
-	inputFileName := reduceName(jobName, reduceTaskNumber, reduceTaskNumber)
-	outputMergeFileName := mergeName(jobName, reduceTaskNumber)
-	intermediateOutput := readIntermediateOutputFile(inputFileName)
+	var mergedKV []KeyValue
 
-	for _, val := range intermediateOutput {
-		sort.Slice(val, func(i, j int) bool {
-			return val[i].Key < val[j].Key
+	for mapTaskNum := 0; mapTaskNum < nMap; mapTaskNum++ {
+		inputFileName := reduceName(jobName, mapTaskNum, reduceTaskNumber)
+		intermediateOutput := readIntermediateOutputFile(inputFileName)
+
+		reduceFileHash := ihash(inputFileName)
+		intermediateValue := intermediateOutput[reduceFileHash]
+
+		sort.Slice(intermediateValue, func(i, j int) bool {
+			return intermediateValue[i].Key < intermediateValue[j].Key
 		})
 
-		var mergedKV []KeyValue
-
-		for _, kv := range val {
+		for _, kv := range intermediateValue {
 			key := kv.Key
 			mergedKV = append(mergedKV, KeyValue{Key: key, Value: reduceF(key, []string{kv.Value})})
 		}
-
-		writeMergedFile(outputMergeFileName, mergedKV)
 	}
-
+	outputMergeFileName := mergeName(jobName, reduceTaskNumber)
+	writeMergedFile(outputMergeFileName, mergedKV)
 }
