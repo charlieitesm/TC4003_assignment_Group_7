@@ -34,13 +34,18 @@ func doReduce(
 	// file.Close()
 	//
 	// Use checkError to handle errors.
-	var mergedKV []KeyValue
+	var outputKV []KeyValue
+
+	// We'll compile the values for the same keys across different files and put them in a []string
+	//  After we're done reading from all files, we'll apply the reduce function and put the result
+	//  in KeyValue structs for output
+	valueCache := make(map[string][]string)
 
 	for mapTaskNum := 0; mapTaskNum < nMap; mapTaskNum++ {
-		inputFileName := reduceName(jobName, mapTaskNum, reduceTaskNumber)
-		intermediateOutput := readIntermediateOutputFile(inputFileName)
+		mapInputFileName := reduceName(jobName, mapTaskNum, reduceTaskNumber)
+		intermediateOutput := readIntermediateOutputFile(mapInputFileName)
 
-		reduceFileHash := ihash(inputFileName)
+		reduceFileHash := ihash(mapInputFileName)
 		intermediateValue := intermediateOutput[reduceFileHash]
 
 		sort.Slice(intermediateValue, func(i, j int) bool {
@@ -49,9 +54,16 @@ func doReduce(
 
 		for _, kv := range intermediateValue {
 			key := kv.Key
-			mergedKV = append(mergedKV, KeyValue{Key: key, Value: reduceF(key, []string{kv.Value})})
+			valueCache[key] = append(valueCache[key], kv.Value)
 		}
 	}
+
+	// Apply the reduce function for all values for the same key across all map files
+	for word, countValues := range valueCache {
+		key := word
+		outputKV = append(outputKV, KeyValue{Key: key, Value: reduceF(key, countValues)})
+	}
+
 	outputMergeFileName := mergeName(jobName, reduceTaskNumber)
-	writeMergedFile(outputMergeFileName, mergedKV)
+	writeMergedFile(outputMergeFileName, outputKV)
 }
