@@ -46,12 +46,10 @@ func doReduce(
 		mapInputFileName := reduceName(jobName, mapTaskNum, reduceTaskNumber)
 		intermediateOutput := readIntermediateOutputFile(mapInputFileName)
 
-		reduceFileHash := ihash(mapInputFileName)
-		intermediateValue := intermediateOutput[reduceFileHash]
-
-		for _, kv := range intermediateValue {
+		for _, kv := range intermediateOutput {
 			key := kv.Key
 
+			// Keep track of unique keys to be ordered later
 			if _, keyAlreadyExists := valueCache[key]; !keyAlreadyExists {
 				keys = append(keys, key)
 			}
@@ -68,5 +66,5 @@ func doReduce(
 	}
 
 	outputMergeFileName := mergeName(jobName, reduceTaskNumber)
-	writeMergedFile(outputMergeFileName, outputKV)
+	writeKeyValuesToFile(outputMergeFileName, outputKV)
 }

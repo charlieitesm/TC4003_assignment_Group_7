@@ -52,20 +52,7 @@ func mergeName(jobName string, reduceTask int) string {
 	return "mrtmp." + jobName + "-res-" + strconv.Itoa(reduceTask)
 }
 
-func writeIntermediateOutputFile(filename string, output interface{}) {
-	outputFile, err := os.Create(filename)
-	checkError(err)
-	defer func() {
-		err := outputFile.Close()
-		checkError(err)
-	}()
-
-	enc := json.NewEncoder(outputFile)
-	err = enc.Encode(&output)
-	checkError(err)
-}
-
-func readIntermediateOutputFile(filename string) map[uint32][]KeyValue {
+func readIntermediateOutputFile(filename string) []KeyValue {
 	inputFile, err := os.Open(filename)
 	checkError(err)
 	defer func() {
@@ -73,16 +60,23 @@ func readIntermediateOutputFile(filename string) map[uint32][]KeyValue {
 		checkError(err)
 	}()
 
-	var result map[uint32][]KeyValue
+	var result []KeyValue
 
 	dec := json.NewDecoder(inputFile)
 
-	err = dec.Decode(&result)
-	checkError(err)
+	for {
+		var kv KeyValue
+		err = dec.Decode(&kv)
+		if err != nil {
+			break
+		}
+		result = append(result, kv)
+	}
+
 	return result
 }
 
-func writeMergedFile(filename string, output []KeyValue) {
+func writeKeyValuesToFile(filename string, output []KeyValue) {
 	outputFile, err := os.Create(filename)
 	checkError(err)
 	defer func() {

@@ -3,7 +3,6 @@ package mapreduce
 import (
 	"hash/fnv"
 	"io/ioutil"
-	"strings"
 )
 
 // doMap does the job of a map worker: it reads one of the input files
@@ -46,36 +45,31 @@ func doMap(
 	content, err := ioutil.ReadFile(inFile)
 	checkError(err)
 
-	words := strings.Fields(string(content))
+	wordCountsKV := mapF(inFile, string(content))
 
-	// Divide the work into chunks
-	wordsInChunk := len(words) / nReduce
-	startIdx := 0
-	for reduceChunk := 0; reduceChunk < nReduce; reduceChunk++ {
-		// If we are on the last chunk, just add the rest of the elements on the word array
-		var chunkContents []string
+	// We want the same words to end up in the same reduceTask file, regardless of mapTask ID (input file) so that
+	//  the reduce worker will quickly sum up all occurrences found of the word. We can use lists and the
+	//  ihash to determine what file a word be put into
 
-		if reduceChunk == nReduce-1 {
-			chunkContents = words[startIdx:]
-		} else {
-			chunkContents = words[startIdx : startIdx+wordsInChunk]
-		}
+	var wordBuckets [][]KeyValue = make([][]KeyValue, nReduce)
+
+	// Put all words in the appropriate word bucket according to its ihash
+	for _, wordKV := range wordCountsKV {
+		bucketNum := ihash(wordKV.Key) % nReduce // This will return a value 0 <= bucket <= nReduce
+		wordBuckets[bucketNum] = append(wordBuckets[bucketNum], wordKV)
+	}
+
+	for reduceChunk, outputValues := range wordBuckets {
 		// The reduceChunk for the name should be 0-based
 		outputFileName := reduceName(jobName, mapTaskNumber, reduceChunk)
 
-		intermediateKv := mapF(outputFileName, strings.Join(chunkContents, " "))
-		intermediateOutput := make(map[uint32][]KeyValue)
-		intermediateOutput[ihash(outputFileName)] = intermediateKv
-
-		writeIntermediateOutputFile(outputFileName, intermediateOutput)
-		startIdx = startIdx + wordsInChunk
+		writeKeyValuesToFile(outputFileName, outputValues)
 	}
-
 }
 
-func ihash(s string) uint32 {
+func ihash(s string) int {
 	h := fnv.New32a()
 	_, err := h.Write([]byte(s))
 	checkError(err)
-	return h.Sum32()
+	return int(h.Sum32())
 }

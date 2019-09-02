@@ -16,19 +16,16 @@ import (
 // and the value is the file's contents. The return value should be a slice of
 // key/value pairs, each represented by a mapreduce.KeyValue.
 func wcMapF(document string, value string) (res []mapreduce.KeyValue) {
-	// TODO: you have to write this function
+	fmt.Printf("%s: map phase\n", document)
+
 	wordCountCache := make(map[string]int)
 
-	// Separate all of the words in the document
-	words := strings.Fields(value)
+	// Separate all of the words in the document using non-letters as separators
+	words := strings.FieldsFunc(value, func(r rune) bool {
+		return !unicode.IsLetter(r)
+	})
 
 	for _, w := range words {
-		w = removeNonLettersFromWord(strings.ToLower(w))
-
-		// We just want alphanumeric characters
-		if len(w) == 0 {
-			continue
-		}
 
 		// If we don't have a record of the word in our cache, initialize its record
 		if _, alreadyExists := wordCountCache[w]; !alreadyExists {
@@ -51,7 +48,7 @@ func wcMapF(document string, value string) (res []mapreduce.KeyValue) {
 // list of that key's string value (merged across all inputs). The return value
 // should be a single output value for that key.
 func wcReduceF(key string, values []string) string {
-	// TODO: you also have to write this function
+	fmt.Printf("%s: reduce phase\n", key)
 	totalWordSum := 0
 
 	for _, partialCountStr := range values {
@@ -60,17 +57,6 @@ func wcReduceF(key string, values []string) string {
 	}
 
 	return strconv.Itoa(totalWordSum)
-}
-
-func removeNonLettersFromWord(word string) string {
-	var filteredWord strings.Builder
-
-	for _, rn := range word {
-		if unicode.IsLetter(rn) {
-			filteredWord.WriteRune(rn)
-		}
-	}
-	return filteredWord.String()
 }
 
 // getFilesInArgs expands file globs if any.
