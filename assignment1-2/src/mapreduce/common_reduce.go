@@ -39,6 +39,7 @@ func doReduce(
 	// We'll compile the values for the same keys across different files and put them in a []string
 	//  After we're done reading from all files, we'll apply the reduce function and put the result
 	//  in KeyValue structs for output
+	var keys []string
 	valueCache := make(map[string][]string)
 
 	for mapTaskNum := 0; mapTaskNum < nMap; mapTaskNum++ {
@@ -48,20 +49,22 @@ func doReduce(
 		reduceFileHash := ihash(mapInputFileName)
 		intermediateValue := intermediateOutput[reduceFileHash]
 
-		sort.Slice(intermediateValue, func(i, j int) bool {
-			return intermediateValue[i].Key < intermediateValue[j].Key
-		})
-
 		for _, kv := range intermediateValue {
 			key := kv.Key
+
+			if _, keyAlreadyExists := valueCache[key]; !keyAlreadyExists {
+				keys = append(keys, key)
+			}
 			valueCache[key] = append(valueCache[key], kv.Value)
 		}
 	}
 
+	sort.Strings(keys)
+
 	// Apply the reduce function for all values for the same key across all map files
-	for word, countValues := range valueCache {
-		key := word
-		outputKV = append(outputKV, KeyValue{Key: key, Value: reduceF(key, countValues)})
+	for _, k := range keys {
+		key := k
+		outputKV = append(outputKV, KeyValue{Key: key, Value: reduceF(key, valueCache[k])})
 	}
 
 	outputMergeFileName := mergeName(jobName, reduceTaskNumber)
