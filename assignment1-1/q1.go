@@ -1,8 +1,12 @@
 package cos418_hw1_1
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"regexp"
 	"sort"
+	"strings"
 )
 
 // Find the top K most common words in a text document.
@@ -15,10 +19,47 @@ import (
 // are removed, e.g. "don't" becomes "dont".
 // You should use `checkError` to handle potential errors.
 func topWords(path string, numWords int, charThreshold int) []WordCount {
-	// TODO: implement me
 	// HINT: You may find the `strings.Fields` and `strings.ToLower` functions helpful
 	// HINT: To keep only alphanumeric characters, use the regex "[^0-9a-zA-Z]+"
-	return nil
+
+	var result []WordCount
+	// We'll use this cache to quickly access previous encounters of a word
+	var cache = make(map[string]int)
+
+	file, err := os.Open(path)
+
+	checkError(err)
+
+	// We defer the closing of the file to the end of the execution of topWords in order to prevent a resource leak
+	defer func() {
+		err = file.Close()
+		checkError(err)
+	}()
+
+	// We can take advantage of the ScanWords scanner to retrieve tokens separated by spaces
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanWords)
+
+	// This for will retrieve tokens until it fails or returns false, signaling the EOF
+	for scanner.Scan() {
+		// Get the word and remove any non-alphanumeric characters, transform it to lower case
+		word := regexp.MustCompile("[^0-9a-zA-Z]+").ReplaceAllString(scanner.Text(), "")
+		word = strings.ToLower(word)
+
+		if len(word) < charThreshold {
+			continue
+		}
+		cache[word] = cache[word] + 1
+	}
+
+	// Transform the cache map into WordCount structs
+	for word, count := range cache {
+		result = append(result, WordCount{word, count})
+	}
+
+	sortWordCounts(result)
+	// Create a slice with only the requested number of words
+	return result[:numWords]
 }
 
 // A struct that represents how many times a word is observed in a document
